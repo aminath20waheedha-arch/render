@@ -1,0 +1,32 @@
+name: Render
+on:
+  workflow_dispatch:
+    inputs:
+      scale:
+        description: "0.5 = draft, 1 = full size"
+        default: "0.5"
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install browser libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libnss3 libdbus-1-3 libatk1.0-0 libasound2t64 libxrandr2 libxkbcommon-x11-0 libxfixes3 libxcomposite1 libxdamage1 libgbm-dev libcups2
+      - name: Render
+        run: |
+          unzip -q sleep-iq.zip
+          cd sleep-iq-short/studio
+          sed -i '/setBrowserExecutable/d;/setChromiumOpenGlRenderer/d;/setConcurrency/d' remotion.config.ts
+          npm ci
+          npx remotion browser ensure
+          npx remotion render src/index.ts SleepIQ out/sleep-iq.mp4 --concurrency 4 --scale=${{ github.event.inputs.scale }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sleep-iq-video
+          path: sleep-iq-short/studio/out/sleep-iq.mp4
